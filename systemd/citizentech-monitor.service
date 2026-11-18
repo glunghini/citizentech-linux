@@ -1,0 +1,18 @@
+[Unit]
+Description=CitizenTech - monitor de CPU, memoria, disco e aplicacao
+After=network-online.target nginx.service
+Wants=network-online.target
+# Nunca desistir de reiniciar, mesmo com falhas seguidas
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/citizentech-monitor.sh
+# Tolerância a falhas: se o processo cair ou for morto, o systemd sobe de novo em 5 s
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

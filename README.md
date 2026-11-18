@@ -84,7 +84,7 @@ O provisionamento pode ser executado de novo: cada etapa reaplica a configuraç�
 | `/var/log/citizentech/monitor.log` | Medições a cada 15 s (CPU, memória, disco, aplicação) |
 | `/var/log/citizentech/alertas.log` | Só ALERTA, RECUPERACAO e ACAO (religar o nginx) |
 | `journalctl -t citizentech-monitor` | Os mesmos registros do monitor no journal do sistema |
-| `sudo ausearch -k citizentech-config -i` | Auditoria: quem alterou `/etc/citizentech` (também `citizentech-nginx`, `citizentech-app`, `citizentech-monitor`, `citizentech-rede`) |
+| `sudo ausearch -k citizentech-config --format text` | Auditoria: quem alterou `/etc/citizentech` (também `citizentech-nginx`, `citizentech-app`, `citizentech-monitor`, `citizentech-rede`) |
 | `/var/log/nginx/citizentech-acesso.log` | Acessos à aplicação |
 
 ## Teste de falha
@@ -104,22 +104,59 @@ O provisionamento pode ser executado de novo: cada etapa reaplica a configuraç�
 
 ## Evidências
 
-Executado na VM `citizentech-srv` (Ubuntu Server 24.04.5, VirtualBox) em 17/11/2026.
+Executado na VM `citizentech-srv` (Ubuntu Server 24.04.5, VirtualBox) em 17 e 18/11/2026.
 
 - **Vídeo:** https://youtu.be/U-0w1kUGdmo — provisionamento automático rodando, rede/DNS/IP, aplicação no navegador em `http://192.168.56.10`, monitor como serviço, teste de falha completo e logs de auditoria.
-- **Saída completa do teste de falha:** [`docs/evidencias/teste-falha.txt`](docs/evidencias/teste-falha.txt).
+- **Capturas de tela:** abaixo e em [`docs/evidencias/`](docs/evidencias/).
+- **Saída completa da primeira execução do teste de falha (testes 1 a 5):** [`docs/evidencias/teste-falha.txt`](docs/evidencias/teste-falha.txt).
 
-Resultado do teste de falha:
+### Resultado dos testes de falha
 
 | Teste | Resultado obtido |
 | --- | --- |
 | 1. nginx morto com `kill -9` | fora do ar logo após o kill; **no ar 6 s depois**, religado pelo systemd |
-| 2. monitor morto com `kill -9` | **religado pelo systemd** (PID 3142 → 3956) |
+| 2. monitor morto com `kill -9` | **religado pelo systemd** com outro PID |
 | 3. nginx parado com `systemctl stop` | monitor registrou `[ALERTA]` e `[ACAO] nginx religado pelo monitor` em ~15 s; depois `[RECUPERACAO]` |
 | 4. CPU a 100 % | `[ALERTA] cpu em 100% (limite 80%)` e depois `[RECUPERACAO] cpu voltou ao normal` |
 | 5. limites de memória/disco em 1 % | `[ALERTA]` de memória e disco; limites restaurados e `[RECUPERACAO]` dos dois |
+| 6. falha controlada num script | `[ERRO] ... falhou (codigo 1): cp /citizentech/arquivo-inexistente /tmp/` registrado no `provisionamento.log` |
+| 7. reinicialização da VM | após o boot: nginx, citizentech-monitor e auditd `enabled` e `active`, aplicação no ar, monitor reiniciado sozinho |
 
-Ao final: `nginx active`, `citizentech-monitor active`, aplicação no ar.
+### Capturas de tela
+
+**1. Provisionamento automático** (`sudo bash provisionar.sh`): as 4 etapas concluídas e a verificação de sistema, rede/DNS/IP, aplicação, monitoramento e auditoria.
+
+![Provisionamento](docs/evidencias/01-provisionamento.jpg)
+
+**2. Aplicação CitizenTech** acessada do navegador do PC em `http://192.168.56.10`, e o `/health` usado pelo monitor.
+
+![Aplicação no navegador](docs/evidencias/02-aplicacao-navegador.jpg)
+
+**3. Usuários e permissões:** usuário de sistema `citizentech`, administrador no grupo `citizentech`, aplicação em `750/640` e logs em `2750/640`.
+
+![Usuários e permissões](docs/evidencias/03-usuarios-permissoes.jpg)
+
+**4. Serviços systemd:** `citizentech-monitor` e `nginx` ativos, habilitados no boot e com a política de reinício (`citizentech-reiniciar.conf`).
+
+![Serviços systemd](docs/evidencias/04-servicos-systemd.jpg)
+
+**5. Monitoramento e logs:** medições a cada 15 s em `monitor.log` e o histórico de ALERTA, ACAO e RECUPERACAO em `alertas.log`.
+
+![Monitoramento e logs](docs/evidencias/05-monitoramento-logs.jpg)
+
+**6. Teste de falha** (`sudo bash testes/teste-falha.sh`): testes 3 a 6 e o resultado final com os serviços ativos.
+
+![Teste de falha](docs/evidencias/06-teste-falha.jpg)
+
+**7. Teste de reinicialização** (`sudo bash testes/teste-reboot.sh`): antes e depois do `reboot`.
+
+![Antes do reboot](docs/evidencias/07a-reboot-antes.jpg)
+
+![Depois do reboot](docs/evidencias/07b-reboot-depois.jpg)
+
+**8. Auditoria** (`ausearch -k citizentech-config --format text` e `aureport -k --summary`): quem alterou as configurações, quando e com qual comando.
+
+![Auditoria](docs/evidencias/08-auditoria.jpg)
 
 ## Estrutura
 

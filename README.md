@@ -4,7 +4,7 @@ Infraestrutura Linux, provisionada **automaticamente por Shell Script dentro de 
 
 Um único comando (`sudo bash provisionar.sh`) configura rede, DNS, IP e hostname, instala e publica a aplicação, sobe o monitoramento como serviço tolerante a falhas e liga a auditoria.
 
-**Vídeo de demonstração:** *(link a preencher após a gravação)*
+**Vídeo de demonstração (até 7 min):** https://youtu.be/U-0w1kUGdmo
 
 ## Integrantes
 
@@ -99,7 +99,22 @@ O provisionamento pode ser executado de novo: cada etapa reaplica a configuraç�
 
 ## Evidências
 
-Prints em [`docs/evidencias/`](docs/evidencias/) *(a preencher após a execução na VM)*.
+Executado na VM `citizentech-srv` (Ubuntu Server 24.04.5, VirtualBox) em 17/11/2026.
+
+- **Vídeo:** https://youtu.be/U-0w1kUGdmo — provisionamento automático rodando, rede/DNS/IP, aplicação no navegador em `http://192.168.56.10`, monitor como serviço, teste de falha completo e logs de auditoria.
+- **Saída completa do teste de falha:** [`docs/evidencias/teste-falha.txt`](docs/evidencias/teste-falha.txt).
+
+Resultado do teste de falha:
+
+| Teste | Resultado obtido |
+| --- | --- |
+| 1. nginx morto com `kill -9` | fora do ar logo após o kill; **no ar 6 s depois**, religado pelo systemd |
+| 2. monitor morto com `kill -9` | **religado pelo systemd** (PID 3142 → 3956) |
+| 3. nginx parado com `systemctl stop` | monitor registrou `[ALERTA]` e `[ACAO] nginx religado pelo monitor` em ~15 s; depois `[RECUPERACAO]` |
+| 4. CPU a 100 % | `[ALERTA] cpu em 100% (limite 80%)` e depois `[RECUPERACAO] cpu voltou ao normal` |
+| 5. limites de memória/disco em 1 % | `[ALERTA]` de memória e disco; limites restaurados e `[RECUPERACAO]` dos dois |
+
+Ao final: `nginx active`, `citizentech-monitor active`, aplicação no ar.
 
 ## Estrutura
 

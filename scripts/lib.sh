@@ -30,7 +30,7 @@ log() {
   local etapa
   etapa="$(basename "${0%.sh}")"
   local linha
-  linha="$(date '+%Y-%m-%d %H:%M:%S') [$nivel] [$etapa] [usuario=${SUDO_USER:-$USER}] $*"
+  linha="$(date '+%Y-%m-%d %H:%M:%S') [$nivel] [$etapa] [usuario=${SUDO_USER:-${USER:-$(id -un)}}] $*"
   echo "$linha"
   echo "$linha" >> "$LOG_PROVISIONAMENTO"
   logger -t citizentech-provisionamento "[$nivel] [$etapa] $*" || true

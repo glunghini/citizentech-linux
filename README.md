@@ -43,6 +43,7 @@ flowchart LR
 | DNS | systemd-resolved com 1.1.1.1 e 8.8.8.8 |
 | Firewall | ufw: só portas 22 (SSH) e 80 (HTTP) |
 | Aplicação | nginx servindo `/var/www/citizentech` |
+| Usuários e permissões | usuário de sistema `citizentech` (sem login) dono da aplicação (`750/640`, grupo `www-data` só leitura); grupo `citizentech` lê os logs (`/var/log/citizentech` em `2750/640`) |
 
 Todos os valores ficam em [`config/citizentech.env`](config/citizentech.env).
 
@@ -58,8 +59,9 @@ sudo bash provisionar.sh
 ```
 
 3. No navegador do PC, abra **http://192.168.56.10**.
-4. Teste de falha: `sudo bash testes/teste-falha.sh` (cerca de 3 minutos).
-5. Estado geral a qualquer momento: `sudo bash testes/verificar.sh`.
+4. Teste de falha: `sudo bash testes/teste-falha.sh` (cerca de 3 minutos, testes 1 a 6).
+5. Teste de reinicialização: `sudo bash testes/teste-reboot.sh`, depois `sudo reboot`, e depois de religar `sudo bash testes/teste-reboot.sh` de novo (teste 7).
+6. Estado geral a qualquer momento: `sudo bash testes/verificar.sh`.
 
 O provisionamento pode ser executado de novo: cada etapa reaplica a configuração.
 
@@ -68,11 +70,11 @@ O provisionamento pode ser executado de novo: cada etapa reaplica a configuraç�
 | Critério (pontos) | Arquivo | O que faz |
 | --- | --- | --- |
 | Provisionamento da infra: redes, DNS, IP (2) | [`scripts/01-infra.sh`](scripts/01-infra.sh) | Hostname, fuso, `/etc/hosts` (`citizentech.local`), DNS no systemd-resolved, IP estático via netplan na placa host-only, firewall ufw |
-| Provisionamento da aplicação: dependências, configurações, orquestração (2) | [`scripts/02-aplicacao.sh`](scripts/02-aplicacao.sh), [`provisionar.sh`](provisionar.sh) | Instala o nginx, grava as variáveis em `/etc/citizentech/app.env`, publica o portal, cria o site e o `/health`; o `provisionar.sh` orquestra as 4 etapas em ordem |
+| Provisionamento da aplicação: dependências, configurações, orquestração (2) | [`scripts/02-aplicacao.sh`](scripts/02-aplicacao.sh), [`provisionar.sh`](provisionar.sh) | Instala o nginx, cria o usuário e o grupo `citizentech` e define as permissões, grava as variáveis em `/etc/citizentech/app.env`, publica o portal, cria o site e o `/health` e deixa o nginx iniciando no boot; o `provisionar.sh` orquestra as 4 etapas em ordem |
 | Monitoramento com alertas de CPU, disco e memória (2) | [`monitor/citizentech-monitor.sh`](monitor/citizentech-monitor.sh) | A cada 15 s mede CPU, memória e disco; registra **ALERTA** acima dos limites (80 / 80 / 85 %) e **RECUPERACAO** ao voltar; confere o `/health` e **religa o nginx** se ele não responder |
 | Monitoramento como serviço tolerante a falhas (1) | [`systemd/citizentech-monitor.service`](systemd/citizentech-monitor.service), [`systemd/nginx-reiniciar.conf`](systemd/nginx-reiniciar.conf), [`scripts/03-monitoramento.sh`](scripts/03-monitoramento.sh) | Monitor e nginx com `Restart=always` e sem limite de reinícios; o monitor sobe no boot |
 | Logs de auditoria e de execução (1) | [`scripts/lib.sh`](scripts/lib.sh), [`scripts/04-auditoria.sh`](scripts/04-auditoria.sh), [`logrotate/citizentech`](logrotate/citizentech) | Cada comando dos scripts é registrado com data, etapa, usuário e resultado; auditd vigia configurações, aplicação, monitor e rede; rotação diária dos logs |
-| Funcionamento completo (2) | [`testes/verificar.sh`](testes/verificar.sh), [`testes/teste-falha.sh`](testes/teste-falha.sh) | Verificação de rede, DNS, aplicação, serviços e auditoria; teste de falha com 5 cenários |
+| Funcionamento completo (2) | [`testes/verificar.sh`](testes/verificar.sh), [`testes/teste-falha.sh`](testes/teste-falha.sh), [`testes/teste-reboot.sh`](testes/teste-reboot.sh) | Verificação de rede, DNS, aplicação, serviços e auditoria; teste de falha com 7 cenários |
 
 ## Logs
 
@@ -96,6 +98,9 @@ O provisionamento pode ser executado de novo: cada etapa reaplica a configuraç�
 | 3 | nginx parado com `systemctl stop` (o systemd não religa) | o monitor detecta o `/health` fora do ar e religa o nginx |
 | 4 | CPU a 100 % | ALERTA de CPU e depois RECUPERACAO |
 | 5 | limites de memória e disco baixados para 1 % | ALERTA de memória e disco; limites restaurados e RECUPERACAO |
+| 6 | falha controlada num script (cópia de arquivo inexistente) | o erro fica registrado como `[ERRO]` no `provisionamento.log` |
+
+`testes/teste-reboot.sh` (teste 7) registra o boot, pede o `sudo reboot` e, depois de religar, mostra que nginx, monitor e auditd subiram sozinhos e que a aplicação está no ar.
 
 ## Evidências
 
@@ -127,6 +132,6 @@ systemd/                    serviço do monitor e política de reinício do ngin
 nginx/                      site da aplicação
 app/                        portal CitizenTech (HTML estático)
 logrotate/                  rotação dos logs
-testes/                     verificar.sh e teste-falha.sh
-docs/evidencias/            prints da execução
+testes/                     verificar.sh, teste-falha.sh e teste-reboot.sh
+docs/evidencias/            prints e saída real do teste de falha
 ```

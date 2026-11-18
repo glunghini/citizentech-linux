@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Teste de falha: derruba serviços e força alertas para mostrar a recuperação automática.
 # Uso: sudo bash testes/teste-falha.sh        (leva cerca de 3 minutos)
+# O teste de reinicializacao da VM fica em testes/teste-reboot.sh.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -61,6 +62,11 @@ grep -E 'memoria|disco' "$LOG_DIR/alertas.log" | tail -n 2 | sed 's/^/    /'
 cp /tmp/monitor.env.bak "$ENV_MONITOR"
 echo "    limites restaurados; aguardando a RECUPERACAO..."
 sleep "$ESPERA_MONITOR"
+
+passo "TESTE 6 - falha controlada em um script (copia de arquivo inexistente). O erro deve ir para o log."
+executar cp /citizentech/arquivo-inexistente /tmp/ 2>/dev/null
+echo "    registrado em $LOG_PROVISIONAMENTO:"
+grep '\[ERRO\]' "$LOG_PROVISIONAMENTO" | tail -n 1 | sed 's/^/    /'
 
 passo "RESULTADO - ultimos registros de alertas e recuperacoes"
 tail -n 15 "$LOG_DIR/alertas.log" | sed 's/^/    /'

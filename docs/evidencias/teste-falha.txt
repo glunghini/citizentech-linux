@@ -1,0 +1,52 @@
+Saida real de: sudo bash testes/teste-falha.sh
+VM citizentech-srv (Ubuntu Server 24.04.5) - executado em 17/11/2026
+
+>>> TESTE 1 - nginx morto com kill -9 (simula travamento). O systemd deve religar sozinho.
+2026-11-17 23:19:54 [TESTE] [teste-falha] [usuario=aluno] TESTE 1 - nginx morto com kill -9 (simula travamento). O systemd deve religar sozinho.
+curl: (7) Failed to connect to 127.0.0.1 port 80 after 0 ms: Couldn't connect to server
+    logo apos o kill:   aplicacao FORA DO AR
+    6 s depois:         aplicacao no ar
+    nginx                  active
+
+>>> TESTE 2 - monitor morto com kill -9. O systemd deve religar o monitor.
+2026-11-17 23:20:01 [TESTE] [teste-falha] [usuario=aluno] TESTE 2 - monitor morto com kill -9. O systemd deve religar o monitor.
+    PID antes: 3142   PID depois: 3956
+    citizentech-monitor    active
+
+>>> TESTE 3 - nginx parado com 'systemctl stop' (o systemd NAO religa). O monitor deve detectar e religar.
+2026-11-17 23:20:08 [TESTE] [teste-falha] [usuario=aluno] TESTE 3 - nginx parado com 'systemctl stop' (o systemd NAO religa). O monitor deve detectar e religar.
+curl: (7) Failed to connect to 127.0.0.1 port 80 after 0 ms: Couldn't connect to server
+    aplicacao: FORA DO AR  (aguardando o monitor, ate 50s)
+    aplicacao: no ar
+    nginx                  active
+    2026-11-17 23:20:22 [ALERTA] aplicacao nao respondeu no /health
+    2026-11-17 23:20:37 [ACAO] tentando religar o nginx (systemctl restart nginx)
+    2026-11-17 23:20:37 [ACAO] nginx religado pelo monitor
+
+>>> TESTE 4 - CPU a 100% por 50 s. O monitor deve gerar ALERTA de CPU.
+2026-11-17 23:20:38 [TESTE] [teste-falha] [usuario=aluno] TESTE 4 - CPU a 100% por 50 s. O monitor deve gerar ALERTA de CPU.
+    2026-11-17 23:21:11 [ALERTA] cpu em 100% (limite 80%)
+
+>>> TESTE 5 - limites de memoria e disco baixados para 1% (simula falta de recurso).
+2026-11-17 23:21:30 [TESTE] [teste-falha] [usuario=aluno] TESTE 5 - limites de memoria e disco baixados para 1% (simula falta de recurso).
+    2026-11-17 23:21:41 [ALERTA] memoria em 11% (limite 1%)
+    2026-11-17 23:21:41 [ALERTA] disco em 12% (limite 1%)
+    limites restaurados; aguardando a RECUPERACAO...
+
+>>> RESULTADO - ultimos registros de alertas e recuperacoes
+2026-11-17 23:23:10 [TESTE] [teste-falha] [usuario=aluno] RESULTADO - ultimos registros de alertas e recuperacoes
+    2026-11-17 23:20:22 [ALERTA] aplicacao nao respondeu no /health
+    2026-11-17 23:20:37 [ACAO] tentando religar o nginx (systemctl restart nginx)
+    2026-11-17 23:20:37 [ACAO] nginx religado pelo monitor
+    2026-11-17 23:20:54 [RECUPERACAO] aplicacao voltou a responder no /health
+    2026-11-17 23:21:11 [ALERTA] cpu em 100% (limite 80%)
+    2026-11-17 23:21:41 [RECUPERACAO] cpu voltou ao normal: 0% (limite 80%)
+    2026-11-17 23:21:41 [ALERTA] memoria em 11% (limite 1%)
+    2026-11-17 23:21:41 [ALERTA] disco em 12% (limite 1%)
+    2026-11-17 23:22:26 [RECUPERACAO] memoria voltou ao normal: 11% (limite 80%)
+    2026-11-17 23:22:26 [RECUPERACAO] disco voltou ao normal: 12% (limite 85%)
+
+Servicos ao final:
+    nginx                  active
+    citizentech-monitor    active
+Aplicacao: no ar
